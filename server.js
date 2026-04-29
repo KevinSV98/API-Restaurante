@@ -242,3 +242,58 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log("Servidor corriendo en puerto " + PORT);
 });
+/* ===============================
+   🔐 AUTH
+================================ */
+
+// REGISTRAR
+app.post('/auth/register', async (req, res) => {
+    try {
+        const { username, password, rol } = req.body;
+
+        const existe = await db.collection('usuarios')
+            .where('username', '==', username)
+            .get();
+
+        if (!existe.empty) {
+            return res.status(400).json({ error: "Usuario ya existe" });
+        }
+
+        const doc = await db.collection('usuarios').add({
+            username,
+            password, // luego lo puedes encriptar
+            rol: rol || "mesero",
+            fecha: new Date()
+        });
+
+        res.json({ id: doc.id });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// LOGIN
+app.post('/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const snapshot = await db.collection('usuarios')
+            .where('username', '==', username)
+            .where('password', '==', password)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(401).json({ error: "Credenciales incorrectas" });
+        }
+
+        const user = snapshot.docs[0];
+
+        res.json({
+            id: user.id,
+            ...user.data()
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
